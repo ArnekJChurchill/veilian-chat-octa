@@ -1,1 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Veilian Chat Octa</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://js.pusher.com/8.2/pusher.min.js"></script>
+</head>
+<body>
+  <div id="app" style="display:none">
+    <!-- Header -->
+    <div id="header">
+      <div id="profileBtn" class="profile-bongle">
+        <img id="myAvatar" src="" alt="avatar" />
+        <span id="myUsername"></span>
+      </div>
+      <h1>VEILIAN CHAT OCTA</h1>
+      <div class="tabs">
+        <button class="tab active" data-tab="main">Main Chat</button>
+        <button class="tab" data-tab="mod" id="modTab" style="display:none">Mod Chat</button>
+        <button class="tab" data-tab="social">Social</button>
+      </div>
+    </div>
 
+    <!-- Main Chat -->
+    <div id="main" class="tab-content">
+      <div id="messages"></div>
+      <div id="inputArea">
+        <input type="text" id="msgInput" placeholder="Type a message..." />
+        <label class="img-btn">Photo<input type="file" id="imgUpload" accept="image/*" style="display:none"/></label>
+        <button id="sendBtn">Send</button>
+      </div>
+      <!-- Moderator Panel (right side) -->
+      <div id="modPanel" style="display:none">
+        <h3>Mod Tools</h3>
+        <input type="text" id="banInput" placeholder="username to ban/unban" />
+        <button id="banBtn">Ban</button>
+        <button id="unbanBtn">Unban</button>
+        <button id="addModBtn" style="display:none">Add Moderator</button>
+      </div>
+    </div>
+
+    <!-- Mod Chat -->
+    <div id="mod" class="tab-content" style="display:none">
+      <div id="modMessages"></div>
+      <input type="text" id="modMsgInput" placeholder="Mod-only message..." />
+      <button id="modSendBtn">Send</button>
+    </div>
+
+    <!-- Social Tab (Mini YouTube) -->
+    <div id="social" class="tab-content" style="display:none">
+      <div id="posts"></div>
+      <div class="upload-post">
+        <input type="text" id="videoTitle" placeholder="Video title" />
+        <input type="url" id="videoUrl" placeholder="YouTube/Video URL" />
+        <textarea id="videoDesc" placeholder="Description"></textarea>
+        <button id="postVideoBtn">Post Video</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
