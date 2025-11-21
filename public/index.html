@@ -11,7 +11,7 @@
   <div id="app" style="display:none">
     <!-- Header -->
     <div id="header">
-      <div id="profileBtn" class="profile-bongle">
+      <div id="profileBtn" class="profile-bongle" onclick="openProfile()">
         <img id="myAvatar" src="" alt="avatar" />
         <span id="myUsername"></span>
       </div>
@@ -24,14 +24,14 @@
     </div>
 
     <!-- Main Chat -->
-    <div id="main" class="tab-content">
+    <div id="main" class="tab-content active">
       <div id="messages"></div>
       <div id="inputArea">
         <input type="text" id="msgInput" placeholder="Type a message..." />
         <label class="img-btn">Photo<input type="file" id="imgUpload" accept="image/*" style="display:none"/></label>
         <button id="sendBtn">Send</button>
       </div>
-      <!-- Moderator Panel (right side) -->
+      <!-- Moderator Panel -->
       <div id="modPanel" style="display:none">
         <h3>Mod Tools</h3>
         <input type="text" id="banInput" placeholder="username to ban/unban" />
@@ -42,20 +42,37 @@
     </div>
 
     <!-- Mod Chat -->
-    <div id="mod" class="tab-content" style="display:none">
+    <div id="mod" class="tab-content">
       <div id="modMessages"></div>
       <input type="text" id="modMsgInput" placeholder="Mod-only message..." />
       <button id="modSendBtn">Send</button>
     </div>
 
-    <!-- Social Tab (Mini YouTube) -->
-    <div id="social" class="tab-content" style="display:none">
+    <!-- Social Tab -->
+    <div id="social" class="tab-content">
       <div id="posts"></div>
       <div class="upload-post">
         <input type="text" id="videoTitle" placeholder="Video title" />
         <input type="url" id="videoUrl" placeholder="YouTube/Video URL" />
         <textarea id="videoDesc" placeholder="Description"></textarea>
         <button id="postVideoBtn">Post Video</button>
+      </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal" style="display:none">
+      <div class="modal-content">
+        <span class="close" onclick="closeProfile()">&times;</span>
+        <img id="profileAvatar" src="" alt="avatar" onclick="document.getElementById('avatarFile').click()" />
+        <h2 id="profileUsername"></h2>
+        <p id="profileBio"></p>
+        <p id="profileJoinDate"></p>
+        <div id="editSection" style="display:none">
+          <textarea id="bioInput" placeholder="Edit bio..."></textarea>
+          <input type="file" id="avatarFile" accept="image/*" style="display:none" />
+          <button id="saveBtn">Save</button>
+        </div>
+        <button id="editBtn">Edit Profile</button>
       </div>
     </div>
   </div>
