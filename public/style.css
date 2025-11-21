@@ -208,16 +208,14 @@ button:hover {
   font-weight: bold;
 }
 
-/* Mod Panel */
+/* Mod Panel - Fixed for cutoff */
 #modPanel {
-  position: fixed;
-  right: 20px;
-  top: 100px;
   background: #1e1e2e;
   padding: 20px;
   border-radius: 12px;
   width: 260px;
   border: 1px solid #333;
+  margin-top: 20px;
 }
 
 #modPanel h3 {
@@ -272,9 +270,66 @@ button:hover {
   color: #888;
 }
 
+/* Profile Modal */
+.modal {
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #1e1e2e;
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+  font-size: 28px;
+  cursor: pointer;
+  color: #ff6;
+}
+
+#profileAvatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  margin: 20px 0;
+  cursor: pointer;
+  border: 3px solid #667eea;
+}
+
+#bioInput {
+  height: 80px;
+  resize: vertical;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   #header { flex-direction: column; gap: 10px; }
   .tabs { flex-wrap: wrap; justify-content: center; }
-  #modPanel { position: relative; right: auto; width: 100%; margin-top: 20px; }
+  #modPanel { width: 100%; margin-top: 20px; position: relative; }
+  #inputArea { flex-direction: column; }
+  #msgInput { width: 100%; }
 }
