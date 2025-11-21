@@ -1,1 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Veilian Chat Octa - Login</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <h1>VEILIAN CHAT OCTA</h1>
+    <input type="text" id="username" placeholder="@username" autocomplete="off" />
+    <input type="password" id="password" placeholder="password" />
+    <div class="btn-group">
+      <button id="signupBtn">Sign Up</button>
+      <button id="loginBtn">Login</button>
+    </div>
+    <p id="message"></p>
+  </div>
 
+  <script>
+    const msg = document.getElementById('message');
+    document.getElementById('signupBtn').onclick = async () => {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      if (!u || !p) return msg.textContent = "Fill everything";
+      const res = await fetch('/signup', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: u, password: p}) });
+      const data = await res.json();
+      if (data.success) { localStorage.setItem('user', JSON.stringify(data.user)); location.href = '/'; }
+      else msg.textContent = data.message;
+    };
+    document.getElementById('loginBtn').onclick = async () => {
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value;
+      if (!u || !p) return msg.textContent = "Fill everything";
+      const res = await fetch('/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: u, password: p}) });
+      const data = await res.json();
+      if (data.success) { localStorage.setItem('user', JSON.stringify(data.user)); location.href = '/'; }
+      else msg.textContent = data.message;
+    };
+  </script>
+</body>
+</html>
