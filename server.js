@@ -4,8 +4,6 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const low = require('lowdb');
-const { FileSync } = require('lowdb/adapters'); // v7: Correct import for sync
 const bcrypt = require('bcrypt');
 const cors = require('cors');
 
@@ -24,23 +22,40 @@ const pusher = new Pusher({
   useTLS: true
 });
 
-// Database Setup (v7 Style: FileSync for sync file ops)
-function initDb(filePath, defaults = {}) {
-  const adapter = new FileSync(filePath);
-  const db = low(adapter);
-  db.defaults(defaults).write(); // v7: Chain defaults().write() to init
-  return db;
+// Simple JSON DB Helpers (no lowdb needed)
+const DATA_DIR = 'data';
+const DB_FILES = {
+  users: `${DATA_DIR}/users.json`,
+  messagesMain: `${DATA_DIR}/messages-main.json`,
+  messagesMod: `${DATA_DIR}/messages-mod.json`,
+  messagesPrivate: `${DATA_DIR}/messages-private.json`,
+  socialPosts: `${DATA_DIR}/social-posts.json`,
+  banned: `${DATA_DIR}/banned.json`
+};
+
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-// Init all DBs
-const usersDb = initDb('data/users.json', { users: [] });
-const mainMsgDb = initDb('data/messages-main.json', { messages: [] });
+function readJson(filePath, defaults = {}) {
+  ensureDir(DATA_DIR);
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify(defaults, null, 2));
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
 
-// Other DBs (mod, private, social, banned)
-const modMsgDb = initDb('data/messages-mod.json', { messages: [] });
-const privateMsgDb = initDb('data/messages-private.json', { messages: {} });
-const socialDb = initDb('data/social-posts.json', { posts: [] });
-const bannedDb = initDb('data/banned.json', { banned: [] });
+function writeJson(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
+
+// Load all DBs
+let usersDb = readJson(DB_FILES.users, { users: [] });
+let mainMsgDb = readJson(DB_FILES.messagesMain, { messages: [] });
+let modMsgDb = readJson(DB_FILES.messagesMod, { messages: [] });
+let privateMsgDb = readJson(DB_FILES.messagesPrivate, { messages: {} });
+let socialDb = readJson(DB_FILES.socialPosts, { posts: [] });
+let bannedDb = readJson(DB_FILES.banned, { banned: [] });
 
 // Multer for file uploads
 const storage = multer.diskStorage({
@@ -52,15 +67,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Ensure folders exist
-['public/uploads/profilePics', 'data'].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+ensureDir('public/uploads/profilePics');
 
 // Default avatar (create if missing)
 const defaultAvatarPath = 'public/uploads/profilePics/default.png';
 if (!fs.existsSync(defaultAvatarPath)) {
-  // Create a simple placeholder (or upload a real PNG to repo)
-  fs.writeFileSync(defaultAvatarPath, ''); // Temp; replace with actual image in repo
+  // Placeholder — add a real PNG to your repo later
+  fs.writeFileSync(defaultAvatarPath, '');
 }
 
 // === ROUTES ===
@@ -68,11 +81,11 @@ if (!fs.existsSync(defaultAvatarPath)) {
 // Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  const user = usersDb.get('users').find({ username }).value();
+  const user = usersDb.users.find(u => u.username === username);
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.json({ success: false, message: "Wrong username or password. Sign up if new!" });
   }
-  if (bannedDb.get('banned').value().includes(username)) {
+  if (bannedDb.banned.includes(username)) {
     return res.json({ success: false, message: "You are banned." });
   }
   res.json({ success: true, user: { ...user, password: undefined } });
@@ -81,7 +94,7 @@ app.post('/login', async (req, res) => {
 // Signup
 app.post('/signup', async (req, res) => {
   const { username, password } = req.body;
-  if (usersDb.get('users').find({ username }).value()) {
+  if (usersDb.users.find(u => u.username === username)) {
     return res.json({ success: false, message: "Username already exists!" });
   }
   const hashed = await bcrypt.hash(password, 10);
@@ -92,22 +105,26 @@ app.post('/signup', async (req, res) => {
     bio: "Hey! I'm new to Veilian Chat.",
     joinDate: new Date().toLocaleDateString(),
     isModerator: false,
-    isSupreme: username === "ArnekJChurchill" // YOU are supreme
+    isSupreme: username === "ArnekJChurchill",
+    friends: [] // Init empty friends array
   };
-  usersDb.get('users').push(newUser).write();
-  // Copy default avatar
+  usersDb.users.push(newUser);
+  writeJson(DB_FILES.users, usersDb);
+  // Copy default avatar if exists
   if (fs.existsSync(defaultAvatarPath)) {
-    const userAvatar = `public/uploads/profilePics/${username}-default.png`;
-    fs.copyFileSync(defaultAvatarPath, userAvatar);
+    const userAvatarPath = `public/uploads/profilePics/${username}-default.png`;
+    fs.copyFileSync(defaultAvatarPath, userAvatarPath);
     newUser.avatar = `/uploads/profilePics/${username}-default.png`;
-    usersDb.get('users').find({ username }).assign({ avatar: newUser.avatar }).write();
+    const userIndex = usersDb.users.findIndex(u => u.username === username);
+    usersDb.users[userIndex].avatar = newUser.avatar;
+    writeJson(DB_FILES.users, usersDb);
   }
   res.json({ success: true, user: { ...newUser, password: undefined } });
 });
 
 // Get user data
 app.get('/user/:username', (req, res) => {
-  const user = usersDb.get('users').find({ username: req.params.username }).value();
+  const user = usersDb.users.find(u => u.username === req.params.username);
   if (!user) return res.json({ error: "User not found" });
   res.json({ ...user, password: undefined });
 });
@@ -115,47 +132,66 @@ app.get('/user/:username', (req, res) => {
 // Update bio
 app.post('/update-bio', (req, res) => {
   const { username, bio } = req.body;
-  usersDb.get('users').find({ username }).assign({ bio }).write();
-  res.json({ success: true });
+  const userIndex = usersDb.users.findIndex(u => u.username === username);
+  if (userIndex !== -1) {
+    usersDb.users[userIndex].bio = bio;
+    writeJson(DB_FILES.users, usersDb);
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
 });
 
 // Upload avatar
 app.post('/upload-avatar', upload.single('avatar'), (req, res) => {
   if (!req.file) return res.json({ success: false });
   const url = `/uploads/profilePics/${req.file.filename}`;
-  usersDb.get('users').find({ username: req.body.username }).assign({ avatar: url }).write();
-  res.json({ success: true, avatar: url });
+  const userIndex = usersDb.users.findIndex(u => u.username === req.body.username);
+  if (userIndex !== -1) {
+    usersDb.users[userIndex].avatar = url;
+    writeJson(DB_FILES.users, usersDb);
+    res.json({ success: true, avatar: url });
+  } else {
+    res.json({ success: false });
+  }
 });
 
 // Ban/Unban
 app.post('/ban', (req, res) => {
   const { modName, target } = req.body;
-  const mod = usersDb.get('users').find({ username: modName }).value();
+  const mod = usersDb.users.find(u => u.username === modName);
   if (!mod || (!mod.isSupreme && !mod.isModerator)) return res.json({ success: false });
 
-  const bannedList = bannedDb.get('banned');
-  if (!bannedList.value().includes(target)) {
-    bannedList.push(target).write();
+  if (!bannedDb.banned.includes(target)) {
+    bannedDb.banned.push(target);
+    writeJson(DB_FILES.banned, bannedDb);
   }
   res.json({ success: true });
 });
 
 app.post('/unban', (req, res) => {
   const { modName, target } = req.body;
-  const mod = usersDb.get('users').find({ username: modName }).value();
+  const mod = usersDb.users.find(u => u.username === modName);
   if (!mod || (!mod.isSupreme && !mod.isModerator)) return res.json({ success: false });
 
-  bannedDb.get('banned').remove({ username: target }).write(); // Note: adjust if not objects
+  bannedDb.banned = bannedDb.banned.filter(u => u !== target);
+  writeJson(DB_FILES.banned, bannedDb);
   res.json({ success: true });
 });
 
 // Add Moderator (Supreme only)
 app.post('/add-moderator', (req, res) => {
   const { supremeName, target } = req.body;
-  const supreme = usersDb.get('users').find({ username: supremeName }).value();
+  const supreme = usersDb.users.find(u => u.username === supremeName);
   if (!supreme?.isSupreme) return res.json({ success: false });
-  usersDb.get('users').find({ username: target }).assign({ isModerator: true }).write();
-  res.json({ success: true });
+  const targetUser = usersDb.users.find(u => u.username === target);
+  if (targetUser) {
+    targetUser.isModerator = true;
+    writeJson(DB_FILES.users, usersDb);
+    res.json({ success: true });
+  } else {
+    res.json({ success: false });
+  }
 });
 
 // Pusher Auth
@@ -164,7 +200,7 @@ app.post('/pusher/auth', (req, res) => {
   const channel = req.body.channel_name;
   const username = req.body.username;
 
-  const user = usersDb.get('users').find({ username }).value();
+  const user = usersDb.users.find(u => u.username === username);
   if (!user) return res.status(403);
 
   const presenceData = {
@@ -176,12 +212,11 @@ app.post('/pusher/auth', (req, res) => {
   res.send(auth);
 });
 
-// Get main chat messages
+// Get/Post main chat messages
 app.get('/messages/main', (req, res) => {
-  res.json(mainMsgDb.get('messages').value());
+  res.json(mainMsgDb.messages);
 });
 
-// Post message to main (with image support)
 app.post('/messages/main', (req, res) => {
   const { username, message, imageUrl } = req.body;
   const newMsg = {
@@ -191,20 +226,22 @@ app.post('/messages/main', (req, res) => {
     imageUrl: imageUrl || null,
     timestamp: new Date().toISOString()
   };
-  mainMsgDb.get('messages').push(newMsg).write();
+  mainMsgDb.messages.push(newMsg);
+  writeJson(DB_FILES.messagesMain, mainMsgDb);
   pusher.trigger('main-chat', 'new-message', newMsg);
   res.json({ success: true });
 });
 
 // Mod chat
 app.get('/messages/mod', (req, res) => {
-  res.json(modMsgDb.get('messages').value());
+  res.json(modMsgDb.messages);
 });
 
 app.post('/messages/mod', (req, res) => {
   const { username, message } = req.body;
   const newMsg = { id: Date.now(), username, message, timestamp: new Date().toISOString() };
-  modMsgDb.get('messages').push(newMsg).write();
+  modMsgDb.messages.push(newMsg);
+  writeJson(DB_FILES.messagesMod, modMsgDb);
   pusher.trigger('mod-chat', 'new-message', newMsg);
   res.json({ success: true });
 });
@@ -214,21 +251,23 @@ app.get('/messages/private/:otherUser', (req, res) => {
   const { username } = req.query;
   const { otherUser } = req.params;
   const key = [username, otherUser].sort().join('_');
-  res.json(privateMsgDb.get(`messages.${key}`).value() || []);
+  res.json(privateMsgDb.messages[key] || []);
 });
 
 app.post('/messages/private', (req, res) => {
   const { username, otherUser, message } = req.body;
   const key = [username, otherUser].sort().join('_');
+  if (!privateMsgDb.messages[key]) privateMsgDb.messages[key] = [];
   const newMsg = { id: Date.now(), from: username, message, timestamp: new Date().toISOString() };
-  privateMsgDb.get('messages').push({ [key]: newMsg }).write(); // Simplified; adjust for array
+  privateMsgDb.messages[key].push(newMsg);
+  writeJson(DB_FILES.messagesPrivate, privateMsgDb);
   pusher.trigger(`private-${key}`, 'new-message', newMsg);
   res.json({ success: true });
 });
 
 // Social posts
 app.get('/social/posts', (req, res) => {
-  res.json(socialDb.get('posts').value());
+  res.json(socialDb.posts);
 });
 
 app.post('/social/post', (req, res) => {
@@ -244,18 +283,23 @@ app.post('/social/post', (req, res) => {
     dislikes: 0,
     comments: []
   };
-  socialDb.get('posts').push(newPost).write();
+  socialDb.posts.push(newPost);
+  writeJson(DB_FILES.socialPosts, socialDb);
   pusher.trigger('social', 'new-post', newPost);
   res.json({ success: true });
 });
 
 app.post('/social/comment', (req, res) => {
   const { postId, username, comment } = req.body;
-  const postIndex = socialDb.get('posts').findIndex({ id: postId }).value();
+  const postIndex = socialDb.posts.findIndex(p => p.id == postId);
   if (postIndex !== -1) {
-    socialDb.get('posts').nth(postIndex).get('comments').push({
-      id: Date.now(), username, comment, timestamp: new Date().toISOString()
-    }).write();
+    socialDb.posts[postIndex].comments.push({
+      id: Date.now(),
+      username,
+      comment,
+      timestamp: new Date().toISOString()
+    });
+    writeJson(DB_FILES.socialPosts, socialDb);
     res.json({ success: true });
   } else {
     res.json({ success: false });
@@ -263,11 +307,12 @@ app.post('/social/comment', (req, res) => {
 });
 
 app.post('/social/like', (req, res) => {
-  const { postId, isLike } = req.body;
-  const post = socialDb.get('posts').find({ id: postId });
-  if (post.value()) {
-    if (isLike) post.assign({ likes: post.value().likes + 1 }).write();
-    else post.assign({ dislikes: post.value().dislikes + 1 }).write();
+  const { postId, isLike } = req.body; // true for like, false for dislike
+  const postIndex = socialDb.posts.findIndex(p => p.id == postId);
+  if (postIndex !== -1) {
+    if (isLike) socialDb.posts[postIndex].likes++;
+    else socialDb.posts[postIndex].dislikes++;
+    writeJson(DB_FILES.socialPosts, socialDb);
     res.json({ success: true });
   } else {
     res.json({ success: false });
@@ -276,9 +321,10 @@ app.post('/social/like', (req, res) => {
 
 app.post('/social/view', (req, res) => {
   const { postId } = req.body;
-  const post = socialDb.get('posts').find({ id: postId });
-  if (post.value()) {
-    post.assign({ views: post.value().views + 1 }).write();
+  const postIndex = socialDb.posts.findIndex(p => p.id == postId);
+  if (postIndex !== -1) {
+    socialDb.posts[postIndex].views++;
+    writeJson(DB_FILES.socialPosts, socialDb);
     res.json({ success: true });
   } else {
     res.json({ success: false });
@@ -288,9 +334,10 @@ app.post('/social/view', (req, res) => {
 // Friend system
 app.post('/friends/add', (req, res) => {
   const { username, friendUsername } = req.body;
-  const user = usersDb.get('users').find({ username });
-  if (user.value() && !user.get('friends').value()?.includes(friendUsername)) {
-    user.get('friends', []).push(friendUsername).write();
+  const userIndex = usersDb.users.findIndex(u => u.username === username);
+  if (userIndex !== -1 && !usersDb.users[userIndex].friends.includes(friendUsername)) {
+    usersDb.users[userIndex].friends.push(friendUsername);
+    writeJson(DB_FILES.users, usersDb);
     res.json({ success: true });
   } else {
     res.json({ success: false });
@@ -298,16 +345,16 @@ app.post('/friends/add', (req, res) => {
 });
 
 app.get('/friends/:username', (req, res) => {
-  const user = usersDb.get('users').find({ username: req.params.username });
-  res.json(user.get('friends').value() || []);
+  const user = usersDb.users.find(u => u.username === req.params.username);
+  res.json(user?.friends || []);
 });
 
 // Mod view private chats
 app.get('/mod/private-chats', (req, res) => {
   const { username } = req.query;
-  const user = usersDb.get('users').find({ username }).value();
+  const user = usersDb.users.find(u => u.username === username);
   if (!user || (!user.isModerator && !user.isSupreme)) return res.status(403).json({ error: "Access denied" });
-  res.json(privateMsgDb.get('messages').value());
+  res.json(privateMsgDb.messages);
 });
 
 // Start server
