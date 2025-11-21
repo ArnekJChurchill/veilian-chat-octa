@@ -3,76 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Veilian Chat Octa</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>VEILIAN CHAT OCTA</title>
+  <link rel="stylesheet"stylesheet" href="style.css" />
   <script src="https://js.pusher.com/8.2/pusher.min.js"></script>
 </head>
 <body>
   <div id="app" style="display:none">
     <!-- Header -->
     <div id="header">
-      <div id="profileBtn" class="profile-bongle" onclick="openProfile()">
-        <img id="myAvatar" src="" alt="avatar" />
+      <div id="userBongle" class="profile-bongle">
+        <img id="myAvatar" src="" alt="avatar">
         <span id="myUsername"></span>
       </div>
       <h1>VEILIAN CHAT OCTA</h1>
       <div class="tabs">
         <button class="tab active" data-tab="main">Main Chat</button>
-        <button class="tab" data-tab="mod" id="modTab" style="display:none">Mod Chat</button>
         <button class="tab" data-tab="social">Social</button>
+        <button class="tab" data-tab="private">Private Chat</button>
+        <button class="tab" data-tab="mod" id="modTab" style="display:none">Mod Chat</button>
       </div>
     </div>
 
-    <!-- Main Chat -->
-    <div id="main" class="tab-content active">
-      <div id="messages"></div>
-      <div id="inputArea">
-        <input type="text" id="msgInput" placeholder="Type a message..." />
-        <label class="img-btn">Photo<input type="file" id="imgUpload" accept="image/*" style="display:none"/></label>
-        <button id="sendBtn">Send</button>
+    <div id="mainContainer">
+      <!-- Main Chat Tab -->
+      <div id="main" class="tab-content active">
+        <div id="messages"></div>
+        <div id="inputArea">
+          <input type="text" id="msgInput" placeholder="Type a message..." />
+          <label class="img-btn">Photo<input type="file" id="imgUpload" accept="image/*" style="display:none"></label>
+          <button id="sendBtn">Send</button>
+        </div>
       </div>
-      <!-- Moderator Panel -->
-      <div id="modPanel" style="display:none">
-        <h3>Mod Tools</h3>
-        <input type="text" id="banInput" placeholder="username to ban/unban" />
+
+      <!-- Social / Private / Mod tabs will be filled by JS -->
+      <div id="social" class="tab-content"></div>
+      <div id="private" class="tab-content"></div>
+      <div id="mod" class="tab-content"></div>
+    </div>
+
+    <!-- Moderator Panel (right side) -->
+    <div id="modPanel" style="display:none">
+      <h3>Mod Tools</h3>
+      <input type="text" id="banInput" placeholder="username" />
+      <div class="btn-row">
         <button id="banBtn">Ban</button>
         <button id="unbanBtn">Unban</button>
-        <button id="addModBtn" style="display:none">Add Moderator</button>
       </div>
-    </div>
-
-    <!-- Mod Chat -->
-    <div id="mod" class="tab-content">
-      <div id="modMessages"></div>
-      <input type="text" id="modMsgInput" placeholder="Mod-only message..." />
-      <button id="modSendBtn">Send</button>
-    </div>
-
-    <!-- Social Tab -->
-    <div id="social" class="tab-content">
-      <div id="posts"></div>
-      <div class="upload-post">
-        <input type="text" id="videoTitle" placeholder="Video title" />
-        <input type="url" id="videoUrl" placeholder="YouTube/Video URL" />
-        <textarea id="videoDesc" placeholder="Description"></textarea>
-        <button id="postVideoBtn">Post Video</button>
+      <div id="supremeSection" style="display:none">
+        <input type="text" id="modTarget" placeholder="username for mod" />
+        <div class="btn-row">
+          <button id="makeModBtn">Make Mod</button>
+          <button id="demoteBtn">Demote to Civ</button>
+        </div>
       </div>
     </div>
 
     <!-- Profile Modal -->
-    <div id="profileModal" class="modal" style="display:none">
+    <div id="profileModal" class="modal">
       <div class="modal-content">
-        <span class="close" onclick="closeProfile()">&times;</span>
-        <img id="profileAvatar" src="" alt="avatar" onclick="document.getElementById('avatarFile').click()" />
+        <span class="close">×</span>
+        <img id="profileAvatar" src="" alt="avatar">
         <h2 id="profileUsername"></h2>
         <p id="profileBio"></p>
-        <p id="profileJoinDate"></p>
-        <div id="editSection" style="display:none">
-          <textarea id="bioInput" placeholder="Edit bio..."></textarea>
-          <input type="file" id="avatarFile" accept="image/*" style="display:none" />
-          <button id="saveBtn">Save</button>
+        <small id="profileJoin"></small>
+        <div id="editArea" style="display:none; margin-top:20px">
+          <textarea id="bioInput" rows="4"></textarea><br><br>
+          <button id="saveBioBtn">Save Bio</button>
         </div>
-        <button id="editBtn">Edit Profile</button>
+        <div style="margin-top:20px">
+          <button id="editBtn">Edit Profile</button>
+          <button id="logoutBtn" style="background:#e74c3c">Log Out</button>
+        </div>
       </div>
     </div>
   </div>
